@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信封排版生成器</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<h1>信封排版生成器</h1>
+
+<input type="file" id="csvFile" accept=".csv" />
+<button class="btn" onclick="generateEnvelopes()">生成信封</button>
+
+<br/><br/>
+
+<label>
+    <input type="radio" name="orientation" value="vertical"> 直式信封
+</label>
+<label>
+    <input type="radio" name="orientation" value="horizontal" checked> 橫式信封
+</label>
+
+<br/><br/>
+
+<div>
+    <label for="senderFontSize">寄件人文字大小 (px): </label>
+    <input type="number" id="senderFontSize" value="18" min="8" max="72">
+</div>
+<div>
+    <label for="receiverFontSize">收件人文字大小 (px): </label>
+    <input type="number" id="receiverFontSize" value="20" min="8" max="72">
+</div>
+
+<br/>
+
+<button class="btn" onclick="printEnvelopes()">列印信封</button>
+
+<!-- 用來顯示多個信封的容器 -->
+<div id="envelopesContainer"></div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
