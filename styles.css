@@ -149,6 +149,15 @@ input:focus, select:focus {
     padding: 8px 10px; font-size: 11.5px; word-break: break-all; color: #334155;
 }
 
+/* ---------- Logo ---------- */
+.logo-actions { display: flex; gap: 10px; }
+.logo-preview {
+    margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: repeating-conic-gradient(#f6f8fc 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+    text-align: center;
+}
+.logo-preview img { max-width: 100%; max-height: 90px; object-fit: contain; }
+
 /* ---------- Segmented & checkbox ---------- */
 .segmented { display: flex; gap: 8px; }
 .seg { flex: 1; position: relative; }
@@ -243,6 +252,8 @@ input:focus, select:focus {
     position: absolute; left: 50%; top: 50%; transform: translate(-40%, -30%);
     max-width: 55%;
 }
+.sender-logo { display: block; width: auto; margin-bottom: 2mm; }
+.orientation-vertical .sender-logo { writing-mode: horizontal-tb; }
 .party-label {
     display: inline-block; font-size: .72em; font-weight: 700; color: #fff;
     background: #64748b; border-radius: 4px; padding: 1px 6px; margin-bottom: 4px;

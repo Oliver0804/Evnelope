@@ -3,6 +3,7 @@
 /* ---------------- 狀態 ---------------- */
 let recipients = [];   // { senderZip, senderName, senderAddress, senderPhone, receiverZip, receiverName, receiverAddress, receiverPhone }
 let editingIndex = -1; // -1 表示新增模式，否則為正在編輯的索引
+let logoDataUrl = "";  // 使用者上傳的標誌（base64 data URL，僅存本機）
 
 /* ---------------- DOM ---------------- */
 const $ = (id) => document.getElementById(id);
@@ -26,7 +27,9 @@ function gatherSettings() {
         senderFontSize: $("senderFontSize").value,
         receiverFontSize: $("receiverFontSize").value,
         showBorder: $("showBorder").checked,
-        showStamp: $("showStamp").checked
+        showStamp: $("showStamp").checked,
+        logo: logoDataUrl,
+        logoSize: $("logoSize").value
     };
 }
 
@@ -64,6 +67,8 @@ function loadState() {
         if (s.receiverFontSize) $("receiverFontSize").value = s.receiverFontSize;
         if (typeof s.showBorder === "boolean") $("showBorder").checked = s.showBorder;
         if (typeof s.showStamp === "boolean") $("showStamp").checked = s.showStamp;
+        if (s.logo) logoDataUrl = s.logo;
+        if (s.logoSize) $("logoSize").value = s.logoSize;
     }
 }
 
@@ -306,6 +311,35 @@ function updatePageStyle() {
     el.textContent = `@media print { @page { size: ${pageSize}; margin: ${margin}; } }`;
 }
 
+/* ---------------- 標誌 Logo ---------------- */
+function updateLogoUI() {
+    const has = !!logoDataUrl;
+    $("logoPreview").hidden = !has;
+    $("logoSizeRow").hidden = !has;
+    $("logoRemoveBtn").hidden = !has;
+    if (has) $("logoPreviewImg").src = logoDataUrl;
+}
+
+$("logoPickBtn").addEventListener("click", () => $("logoFile").click());
+$("logoFile").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        logoDataUrl = ev.target.result;
+        updateLogoUI();
+        render();
+    };
+    reader.readAsDataURL(file);
+});
+$("logoRemoveBtn").addEventListener("click", () => {
+    logoDataUrl = "";
+    updateLogoUI();
+    render();
+});
+$("logoSize").addEventListener("input", render);
+
 // 切換自訂尺寸欄位與列印方式說明
 function updateSettingsUI() {
     $("customSizeRow").hidden = $("envelopeSize").value !== "custom";
@@ -347,6 +381,10 @@ function buildEnvelope(r) {
     env.className = "envelope";
 
     const stamp = `<div class="stamp">郵票<br>黏貼處</div>`;
+    const logoH = $("logoSize").value || 12;
+    const logoHtml = logoDataUrl
+        ? `<img class="sender-logo" src="${logoDataUrl}" style="height:${logoH}mm" alt="logo">`
+        : "";
 
     if (orientation === "vertical") {
         // 直式：收件人郵遞區號獨立置於右上，寄件人郵遞區號置於左下
@@ -360,6 +398,7 @@ function buildEnvelope(r) {
                 ${r.receiverPhone ? `<div class="line">${esc(r.receiverPhone)}</div>` : ""}
             </div>
             <div class="sender" style="font-size:${senderFs}px">
+                ${logoHtml}
                 <span class="party-label">寄件人</span>
                 <div class="line name-line">${esc(r.senderName)} 寄</div>
                 <div class="line addr-line">${esc(r.senderAddress)}</div>
@@ -373,6 +412,7 @@ function buildEnvelope(r) {
         env.innerHTML = `
             ${stamp}
             <div class="sender" style="font-size:${senderFs}px">
+                ${logoHtml}
                 <span class="party-label">寄件人</span>
                 ${r.senderZip ? `<div class="line zip-line">${esc(r.senderZip)}</div>` : ""}
                 <div class="line name-line">${senderName}</div>
@@ -445,4 +485,5 @@ $("printBtn").addEventListener("click", () => {
 /* ---------------- 初始 ---------------- */
 loadState();        // 還原上次在這台電腦的內容與設定
 updateSettingsUI(); // 依還原的設定切換自訂尺寸欄位與說明
+updateLogoUI();     // 還原標誌預覽
 render();

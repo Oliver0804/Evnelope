@@ -97,6 +97,24 @@
             </details>
         </div>
 
+        <!-- Logo -->
+        <div class="card">
+            <h2 class="card-title">標誌 Logo</h2>
+            <div class="logo-actions">
+                <input type="file" id="logoFile" accept="image/*" hidden />
+                <button type="button" class="btn btn-outline" id="logoPickBtn">上傳圖片</button>
+                <button type="button" class="btn btn-ghost" id="logoRemoveBtn" hidden>移除標誌</button>
+            </div>
+            <div class="logo-preview" id="logoPreview" hidden>
+                <img id="logoPreviewImg" alt="Logo 預覽">
+            </div>
+            <div class="field" id="logoSizeRow" hidden>
+                <label for="logoSize">標誌高度 (mm)</label>
+                <input type="number" id="logoSize" value="12" min="4" max="40">
+            </div>
+            <p class="hint">標誌會顯示在寄件人資訊上方，僅儲存在這台電腦。</p>
+        </div>
+
         <!-- 版面設定 -->
         <div class="card">
             <h2 class="card-title">版面設定</h2>
