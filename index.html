@@ -3,54 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>信封排版生成器</title>
+    <title>台灣信封排版生成器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<h1>信封排版生成器</h1>
-<!-- 項目 GitHub 連結 -->
-<div>
-    <a href="https://oliver0804.github.io/Evnelope/" target="_blank">項目 GitHub 連結</a>
-</div>
+<header class="app-header">
+    <div class="header-inner">
+        <div class="brand">
+            <span class="brand-logo">✉️</span>
+            <div>
+                <h1>台灣信封排版生成器</h1>
+                <p class="subtitle">手動輸入或匯入 CSV，一鍵產出符合中華郵政格式、可直接郵寄的信封</p>
+            </div>
+        </div>
+        <nav class="header-links">
+            <a href="https://github.com/Oliver0804/Evnelope" target="_blank" rel="noopener">GitHub 專案</a>
+            <a id="downloadTemplate" href="#">下載 CSV 模板</a>
+        </nav>
+    </div>
+</header>
 
-<!-- 下載 CSV 格式模板 -->
-<div>
-    <a href="https://github.com/Oliver0804/Evnelope/blob/main/demo.csv" download>下載 CSV 格式模板</a>
-</div>
-<input type="file" id="csvFile" accept=".csv" />
-<button class="btn" onclick="generateEnvelopes()">生成信封</button>
+<main class="layout">
+    <!-- 左側：輸入與設定 -->
+    <section class="panel controls" aria-label="輸入與設定">
 
-<br/><br/>
+        <!-- 手動輸入表單 -->
+        <div class="card">
+            <h2 class="card-title">手動輸入</h2>
+            <form id="envelopeForm" class="form-grid" autocomplete="off">
 
-<label>
-    <input type="radio" name="orientation" value="vertical"> 直式信封
-</label>
-<label>
-    <input type="radio" name="orientation" value="horizontal" checked> 橫式信封
-</label>
+                <fieldset class="party">
+                    <legend>寄件人</legend>
+                    <div class="field">
+                        <label for="senderZip">郵遞區號</label>
+                        <input type="text" id="senderZip" inputmode="numeric" maxlength="6" placeholder="例：100">
+                    </div>
+                    <div class="field">
+                        <label for="senderName">姓名 <span class="req">*</span></label>
+                        <input type="text" id="senderName" placeholder="王小明" required>
+                    </div>
+                    <div class="field">
+                        <label for="senderAddress">地址 <span class="req">*</span></label>
+                        <input type="text" id="senderAddress" placeholder="台北市中正區忠孝東路一段100號" required>
+                    </div>
+                    <div class="field">
+                        <label for="senderPhone">電話</label>
+                        <input type="text" id="senderPhone" inputmode="tel" placeholder="0912345678">
+                    </div>
+                </fieldset>
 
-<br/><br/>
+                <fieldset class="party">
+                    <legend>收件人</legend>
+                    <div class="field">
+                        <label for="receiverZip">郵遞區號</label>
+                        <input type="text" id="receiverZip" inputmode="numeric" maxlength="6" placeholder="例：407">
+                    </div>
+                    <div class="field">
+                        <label for="receiverName">姓名 <span class="req">*</span></label>
+                        <input type="text" id="receiverName" placeholder="李大華" required>
+                    </div>
+                    <div class="field">
+                        <label for="receiverAddress">地址 <span class="req">*</span></label>
+                        <input type="text" id="receiverAddress" placeholder="台中市西屯區台灣大道二段200號" required>
+                    </div>
+                    <div class="field">
+                        <label for="receiverPhone">電話</label>
+                        <input type="text" id="receiverPhone" inputmode="tel" placeholder="0987654321">
+                    </div>
+                </fieldset>
 
-<div>
-    <label for="senderFontSize">寄件人文字大小 (px): </label>
-    <input type="number" id="senderFontSize" value="18" min="8" max="72">
-</div>
-<div>
-    <label for="receiverFontSize">收件人文字大小 (px): </label>
-    <input type="number" id="receiverFontSize" value="20" min="8" max="72">
-</div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="addBtn">＋ 新增到清單</button>
+                    <button type="button" class="btn btn-ghost" id="resetFormBtn">清空表單</button>
+                </div>
+                <p class="hint">小技巧：地址開頭若含數字郵遞區號，會自動帶入「郵遞區號」欄位。</p>
+            </form>
+        </div>
 
-<br/>
+        <!-- CSV 匯入 -->
+        <div class="card">
+            <h2 class="card-title">匯入 CSV</h2>
+            <div class="csv-import" id="dropZone">
+                <input type="file" id="csvFile" accept=".csv" hidden />
+                <button type="button" class="btn btn-outline" id="csvPickBtn">選擇 CSV 檔案</button>
+                <span class="csv-hint">或將檔案拖曳到這裡</span>
+            </div>
+            <details class="csv-format">
+                <summary>CSV 欄位格式</summary>
+                <p>支援含郵遞區號的新格式，也相容舊格式（不含郵遞區號）。第一列為標題：</p>
+                <code>寄件人郵遞區號,寄件人姓名,寄件人地址,寄件人電話,收件人郵遞區號,收件人姓名,收件人地址,收件人電話</code>
+            </details>
+        </div>
 
-<button class="btn" onclick="printEnvelopes()">列印信封</button>
+        <!-- 版面設定 -->
+        <div class="card">
+            <h2 class="card-title">版面設定</h2>
 
-<!-- 用來顯示多個信封的容器 -->
-<div id="envelopesContainer"></div>
+            <div class="field">
+                <label>信封方向</label>
+                <div class="segmented" role="radiogroup" aria-label="信封方向">
+                    <label class="seg">
+                        <input type="radio" name="orientation" value="horizontal" checked>
+                        <span>橫式 ▭</span>
+                    </label>
+                    <label class="seg">
+                        <input type="radio" name="orientation" value="vertical">
+                        <span>直式 ▯</span>
+                    </label>
+                </div>
+            </div>
 
+            <div class="field">
+                <label for="envelopeSize">信封尺寸</label>
+                <select id="envelopeSize">
+                    <option value="western-dl">西式 DL（220 × 110 mm）</option>
+                    <option value="western-12k">西式 12K（230 × 120 mm）</option>
+                    <option value="chinese-2">中式 2 號（176 × 125 mm）</option>
+                    <option value="chinese-3">中式 3 號（230 × 160 mm）</option>
+                    <option value="a4-quarter">A4 四格（測試 / 草稿）</option>
+                </select>
+            </div>
+
+            <div class="two-col">
+                <div class="field">
+                    <label for="senderFontSize">寄件人字級 (px)</label>
+                    <input type="number" id="senderFontSize" value="14" min="8" max="48">
+                </div>
+                <div class="field">
+                    <label for="receiverFontSize">收件人字級 (px)</label>
+                    <input type="number" id="receiverFontSize" value="22" min="8" max="48">
+                </div>
+            </div>
+
+            <label class="checkbox">
+                <input type="checkbox" id="showBorder" checked>
+                <span>顯示信封外框（草稿用，正式郵寄建議關閉）</span>
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" id="showStamp" checked>
+                <span>顯示郵票位置標記</span>
+            </label>
+        </div>
+
+        <div class="card action-card">
+            <button type="button" class="btn btn-primary btn-block" id="printBtn">🖨️ 列印信封</button>
+            <button type="button" class="btn btn-ghost btn-block" id="clearAllBtn">清除全部信封</button>
+        </div>
+    </section>
+
+    <!-- 右側：清單與預覽 -->
+    <section class="panel preview-pane" aria-label="預覽">
+        <div class="preview-toolbar">
+            <h2>信封清單 <span class="count-badge" id="countBadge">0</span></h2>
+            <p class="preview-help">下方為列印預覽，點擊清單項目可編輯或刪除。</p>
+        </div>
+
+        <ul class="recipient-list" id="recipientList"></ul>
+
+        <div id="emptyState" class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>尚未新增任何信封</p>
+            <p class="empty-sub">使用左側「手動輸入」或「匯入 CSV」開始</p>
+        </div>
+
+        <!-- 列印與預覽容器 -->
+        <div id="envelopesContainer" class="size-western-dl orientation-horizontal show-border show-stamp"></div>
+    </section>
+</main>
 
 <script src="script.js"></script>
-
-
 </body>
 </html>
