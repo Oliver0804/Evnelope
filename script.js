@@ -4,6 +4,9 @@
 let recipients = [];   // { senderZip, senderName, senderAddress, senderPhone, receiverZip, receiverName, receiverAddress, receiverPhone }
 let editingIndex = -1; // -1 表示新增模式，否則為正在編輯的索引
 let logoDataUrl = "";  // 使用者上傳的標誌（base64 data URL，僅存本機）
+let layout = { horizontal: {}, vertical: {} }; // 各方向、各區塊的自訂位置（px，相對信封左上角）
+let userZoom = 1;      // 使用者的預覽縮放倍率（1 = 符合畫面）
+let currentScale = 1;  // 目前實際套用的預覽縮放（自動符合 × userZoom），拖曳換算用
 
 /* ---------------- DOM ---------------- */
 const $ = (id) => document.getElementById(id);
@@ -29,7 +32,9 @@ function gatherSettings() {
         showBorder: $("showBorder").checked,
         showStamp: $("showStamp").checked,
         logo: logoDataUrl,
-        logoSize: $("logoSize").value
+        logoSize: $("logoSize").value,
+        layout,
+        userZoom
     };
 }
 
@@ -69,6 +74,8 @@ function loadState() {
         if (typeof s.showStamp === "boolean") $("showStamp").checked = s.showStamp;
         if (s.logo) logoDataUrl = s.logo;
         if (s.logoSize) $("logoSize").value = s.logoSize;
+        if (s.layout && s.layout.horizontal && s.layout.vertical) layout = s.layout;
+        if (typeof s.userZoom === "number") userZoom = s.userZoom;
     }
 }
 
@@ -358,18 +365,131 @@ document.querySelectorAll('input[name="orientation"]').forEach((el) =>
 window.addEventListener("resize", scalePreview);
 
 /* ---------------- 預覽縮放 ----------------
-   信封以實際 mm 呈現，畫面通常放不下，依容器寬度自動縮小（僅縮預覽，列印不受影響）。 */
+   信封以實際 mm 呈現，畫面通常放不下，先自動縮到符合畫面，再乘上使用者的縮放倍率
+   （僅縮預覽，列印不受影響）。 */
 function scalePreview() {
     container.style.transform = "scale(1)";
-    const pane = container.parentElement;
-    const first = container.querySelector(".envelope");
-    if (!first) return;
-    const available = pane.clientWidth;
-    const natural = first.offsetWidth + 32; // 加一點邊距
-    const scale = Math.min(1, available / natural);
-    container.style.transform = `scale(${scale})`;
-    container.style.height = (container.scrollHeight * scale) + "px";
+    container.style.width = "";
+    container.style.height = "";
+    if (!container.querySelector(".envelope")) {
+        $("zoomBar").hidden = true;
+        return;
+    }
+    $("zoomBar").hidden = false;
+
+    const pane = container.parentElement;            // .preview-scroll
+    const available = pane.clientWidth - 4;
+    const naturalW = container.scrollWidth;
+    const naturalH = container.scrollHeight;
+    const fit = Math.min(1, available / naturalW);
+    currentScale = fit * userZoom;
+
+    container.style.transform = `scale(${currentScale})`;
+    container.style.transformOrigin = "top left";
+    container.style.width = (naturalW * currentScale) + "px";
+    container.style.height = (naturalH * currentScale) + "px";
+
+    $("zoomVal").textContent = Math.round(userZoom * 100) + "%";
+    $("zoomRange").value = Math.round(userZoom * 100);
 }
+
+/* ---------------- 預覽縮放控制 ---------------- */
+function setZoom(pct) {
+    userZoom = Math.min(2, Math.max(0.3, pct / 100));
+    scalePreview();
+    saveState();
+}
+$("zoomRange").addEventListener("input", (e) => setZoom(+e.target.value));
+$("zoomIn").addEventListener("click", () => setZoom(Math.round(userZoom * 100) + 10));
+$("zoomOut").addEventListener("click", () => setZoom(Math.round(userZoom * 100) - 10));
+$("zoomFit").addEventListener("click", () => setZoom(100));
+$("resetLayout").addEventListener("click", () => {
+    const o = currentOrientation();
+    if (Object.keys(layout[o] || {}).length === 0) return;
+    if (confirm("確定要把目前方向的版面位置重設回預設嗎？")) {
+        layout[o] = {};
+        render();
+    }
+});
+
+// Ctrl + 滾輪：縮放整個預覽
+container.parentElement.addEventListener("wheel", (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    setZoom(Math.round(userZoom * 100) + (e.deltaY < 0 ? 8 : -8));
+}, { passive: false });
+
+/* ---------------- 拖曳排版 ---------------- */
+let dragState = null;
+container.addEventListener("pointerdown", (e) => {
+    const el = e.target.closest("[data-drag]");
+    if (!el) return;
+    e.preventDefault();
+    const env = el.closest(".envelope");
+    const elRect = el.getBoundingClientRect();
+    const envRect = env.getBoundingClientRect();
+    const sx = (elRect.left - envRect.left) / currentScale;
+    const sy = (elRect.top - envRect.top) / currentScale;
+    dragState = {
+        key: el.dataset.drag,
+        orient: currentOrientation(),
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startX: sx, startY: sy,
+        curX: sx, curY: sy,
+        moved: false
+    };
+    document.querySelectorAll(`[data-drag="${dragState.key}"]`)
+        .forEach((n) => n.classList.add("dragging"));
+});
+window.addEventListener("pointermove", (e) => {
+    if (!dragState) return;
+    const dx = (e.clientX - dragState.startMouseX) / currentScale;
+    const dy = (e.clientY - dragState.startMouseY) / currentScale;
+    if (Math.abs(dx) + Math.abs(dy) > 1) dragState.moved = true;
+    dragState.curX = Math.max(0, dragState.startX + dx);
+    dragState.curY = Math.max(0, dragState.startY + dy);
+    document.querySelectorAll(`[data-drag="${dragState.key}"]`)
+        .forEach((el) => applyPosToEl(el, dragState.curX, dragState.curY));
+});
+window.addEventListener("pointerup", () => {
+    if (!dragState) return;
+    document.querySelectorAll(`[data-drag="${dragState.key}"]`)
+        .forEach((n) => n.classList.remove("dragging"));
+    if (dragState.moved) {
+        layout[dragState.orient][dragState.key] = { x: dragState.curX, y: dragState.curY };
+        saveState();
+    }
+    dragState = null;
+});
+
+/* 滾輪縮放單一區塊文字（Logo 則調整高度） */
+container.addEventListener("wheel", (e) => {
+    if (e.ctrlKey) return; // 留給整體縮放
+    const el = e.target.closest("[data-drag]");
+    if (!el) return;
+    e.preventDefault();
+    const step = e.deltaY < 0 ? 1 : -1;
+    if (e.target.classList.contains("sender-logo")) {
+        bumpInput("logoSize", step, 4, 40);
+    } else if (el.dataset.drag === "sender" || el.dataset.drag === "senderZip") {
+        bumpInput("senderFontSize", step, 8, 48);
+    } else {
+        bumpInput("receiverFontSize", step, 8, 48);
+    }
+    render();
+}, { passive: false });
+
+function bumpInput(id, step, min, max) {
+    const el = $(id);
+    el.value = Math.min(max, Math.max(min, (+el.value || min) + step));
+}
+
+/* ---------------- 浮動列印按鈕 ---------------- */
+$("floatingPrint").addEventListener("click", () => doPrint());
+window.addEventListener("scroll", () => {
+    $("floatingPrint").classList.toggle("visible", window.scrollY > 90);
+});
 
 /* ---------------- 渲染 ---------------- */
 function buildEnvelope(r) {
@@ -390,42 +510,59 @@ function buildEnvelope(r) {
         // 直式：收件人郵遞區號獨立置於右上，寄件人郵遞區號置於左下
         env.innerHTML = `
             ${stamp}
-            ${r.receiverZip ? `<div class="receiver-zip" style="font-size:${receiverFs}px">${esc(r.receiverZip)}</div>` : ""}
-            <div class="receiver" style="font-size:${receiverFs}px">
+            ${r.receiverZip ? `<div class="receiver-zip" data-drag="receiverZip" style="font-size:${receiverFs}px">${esc(r.receiverZip)}</div>` : ""}
+            <div class="receiver" data-drag="receiver" style="font-size:${receiverFs}px">
                 <span class="party-label">收件人</span>
                 <div class="line name-line">${esc(r.receiverName)} 收</div>
                 <div class="line addr-line">${esc(r.receiverAddress)}</div>
                 ${r.receiverPhone ? `<div class="line">${esc(r.receiverPhone)}</div>` : ""}
             </div>
-            <div class="sender" style="font-size:${senderFs}px">
+            <div class="sender" data-drag="sender" style="font-size:${senderFs}px">
                 ${logoHtml}
                 <span class="party-label">寄件人</span>
                 <div class="line name-line">${esc(r.senderName)} 寄</div>
                 <div class="line addr-line">${esc(r.senderAddress)}</div>
                 ${r.senderPhone ? `<div class="line">${esc(r.senderPhone)}</div>` : ""}
             </div>
-            ${r.senderZip ? `<div class="sender-zip">${esc(r.senderZip)}</div>` : ""}`;
+            ${r.senderZip ? `<div class="sender-zip" data-drag="senderZip">${esc(r.senderZip)}</div>` : ""}`;
     } else {
         // 橫式：寄件人左上、收件人中央
         const senderName = [esc(r.senderName), esc(r.senderPhone)].filter(Boolean).join("　");
         const receiverName = [esc(r.receiverName) + " 收", esc(r.receiverPhone)].filter(Boolean).join("　");
         env.innerHTML = `
             ${stamp}
-            <div class="sender" style="font-size:${senderFs}px">
+            <div class="sender" data-drag="sender" style="font-size:${senderFs}px">
                 ${logoHtml}
                 <span class="party-label">寄件人</span>
                 ${r.senderZip ? `<div class="line zip-line">${esc(r.senderZip)}</div>` : ""}
                 <div class="line name-line">${senderName}</div>
                 <div class="line addr-line">${esc(r.senderAddress)}</div>
             </div>
-            <div class="receiver" style="font-size:${receiverFs}px">
+            <div class="receiver" data-drag="receiver" style="font-size:${receiverFs}px">
                 <span class="party-label">收件人</span>
                 ${r.receiverZip ? `<div class="line zip-line">${esc(r.receiverZip)}</div>` : ""}
                 <div class="line name-line">${receiverName}</div>
                 <div class="line addr-line">${esc(r.receiverAddress)}</div>
             </div>`;
     }
+
+    // 套用使用者拖曳後的自訂位置
+    const pos = layout[orientation] || {};
+    env.querySelectorAll("[data-drag]").forEach((el) => {
+        const p = pos[el.dataset.drag];
+        if (p) applyPosToEl(el, p.x, p.y);
+    });
+
     return env;
+}
+
+// 將某區塊定位到信封內的指定座標（px，相對信封左上角）
+function applyPosToEl(el, x, y) {
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    el.style.right = "auto";
+    el.style.bottom = "auto";
+    el.style.transform = "none";
 }
 
 function renderList() {
@@ -470,17 +607,19 @@ function render() {
 }
 
 /* ---------------- 列印 ---------------- */
-$("printBtn").addEventListener("click", () => {
+function doPrint() {
     if (!recipients.length) {
         alert("請先新增至少一個信封。");
         return;
     }
     container.style.transform = "scale(1)";
+    container.style.width = "auto";
     container.style.height = "auto";
     window.print();
     // 列印對話框關閉後恢復預覽縮放
     setTimeout(scalePreview, 300);
-});
+}
+$("printBtn").addEventListener("click", doPrint);
 
 /* ---------------- 初始 ---------------- */
 loadState();        // 還原上次在這台電腦的內容與設定

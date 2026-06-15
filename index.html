@@ -9,6 +9,8 @@
 </head>
 <body>
 
+<button type="button" id="floatingPrint" class="floating-print" title="列印信封">🖨️ 列印信封</button>
+
 <header class="app-header">
     <div class="header-inner">
         <div class="brand">
@@ -197,7 +199,7 @@
     <section class="panel preview-pane" aria-label="預覽">
         <div class="preview-toolbar">
             <h2>信封清單 <span class="count-badge" id="countBadge">0</span></h2>
-            <p class="preview-help">下方為列印預覽，點擊清單項目可編輯或刪除。</p>
+            <p class="preview-help">提示：可直接在預覽上<strong>拖曳</strong>寄件人 / 收件人區塊調整位置，<strong>滑鼠滾輪</strong>可縮放區塊文字。</p>
         </div>
 
         <ul class="recipient-list" id="recipientList"></ul>
@@ -208,8 +210,21 @@
             <p class="empty-sub">使用左側「手動輸入」或「匯入 CSV」開始</p>
         </div>
 
+        <!-- 預覽縮放工具 -->
+        <div class="zoom-bar" id="zoomBar" hidden>
+            <span class="zoom-label">預覽縮放</span>
+            <button type="button" class="icon-btn" id="zoomOut">－</button>
+            <input type="range" id="zoomRange" min="30" max="200" step="5" value="100">
+            <span class="zoom-val" id="zoomVal">100%</span>
+            <button type="button" class="icon-btn" id="zoomIn">＋</button>
+            <button type="button" class="icon-btn" id="zoomFit">符合畫面</button>
+            <button type="button" class="icon-btn" id="resetLayout">重設排版</button>
+        </div>
+
         <!-- 列印與預覽容器 -->
-        <div id="envelopesContainer" class="size-western-dl orientation-horizontal show-border show-stamp"></div>
+        <div class="preview-scroll">
+            <div id="envelopesContainer" class="size-western-dl orientation-horizontal show-border show-stamp"></div>
+        </div>
     </section>
 </main>
 
