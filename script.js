@@ -56,7 +56,7 @@ function loadState() {
     } catch (e) {
         data = null;
     }
-    if (!data) return;
+    if (!data) return false;
 
     if (Array.isArray(data.recipients)) recipients = data.recipients;
 
@@ -77,6 +77,22 @@ function loadState() {
         if (s.layout && s.layout.horizontal && s.layout.vertical) layout = s.layout;
         if (typeof s.userZoom === "number") userZoom = s.userZoom;
     }
+    return true;
+}
+
+/* ---------------- 範例資料 ---------------- */
+const SAMPLE_RECIPIENTS = [
+    {
+        senderZip: "100", senderName: "王小明",
+        senderAddress: "台北市中正區忠孝東路一段100號", senderPhone: "0912345678",
+        receiverZip: "407", receiverName: "李大華",
+        receiverAddress: "台中市西屯區台灣大道二段200號", receiverPhone: "0987654321"
+    }
+];
+
+function loadSample() {
+    recipients = recipients.concat(SAMPLE_RECIPIENTS.map((r) => Object.assign({}, r)));
+    render();
 }
 
 /* ---------------- 工具 ---------------- */
@@ -622,7 +638,12 @@ function doPrint() {
 $("printBtn").addEventListener("click", doPrint);
 
 /* ---------------- 初始 ---------------- */
-loadState();        // 還原上次在這台電腦的內容與設定
+$("loadSample").addEventListener("click", loadSample);
+
+const hadSaved = loadState(); // 還原上次在這台電腦的內容與設定
+if (!hadSaved && recipients.length === 0) {
+    recipients = SAMPLE_RECIPIENTS.map((r) => Object.assign({}, r)); // 首次造訪載入範例
+}
 updateSettingsUI(); // 依還原的設定切換自訂尺寸欄位與說明
 updateLogoUI();     // 還原標誌預覽
 render();

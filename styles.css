@@ -238,6 +238,7 @@ input:focus, select:focus {
 .empty-icon { font-size: 44px; }
 .empty-state p { margin: 6px 0; }
 .empty-sub { font-size: 13px; }
+.empty-state .btn { margin-top: 14px; }
 
 /* ---------- Footer ---------- */
 .app-footer {
