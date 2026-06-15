@@ -123,7 +123,28 @@
                     <option value="chinese-2">中式 2 號（176 × 125 mm）</option>
                     <option value="chinese-3">中式 3 號（230 × 160 mm）</option>
                     <option value="a4-quarter">A4 四格（測試 / 草稿）</option>
+                    <option value="custom">自訂尺寸…</option>
                 </select>
+            </div>
+
+            <div class="field two-col" id="customSizeRow" hidden>
+                <div>
+                    <label for="customWidth">寬度 (mm)</label>
+                    <input type="number" id="customWidth" value="220" min="80" max="420">
+                </div>
+                <div>
+                    <label for="customHeight">高度 (mm)</label>
+                    <input type="number" id="customHeight" value="110" min="80" max="420">
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="printMode">列印方式</label>
+                <select id="printMode">
+                    <option value="pack">自動拼版（多封排同一張 A4，省紙）</option>
+                    <option value="single">每封一頁（直接印在實體信封上）</option>
+                </select>
+                <p class="hint" id="printModeHint"></p>
             </div>
 
             <div class="two-col">

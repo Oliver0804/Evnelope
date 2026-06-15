@@ -20,6 +20,9 @@ function gatherSettings() {
     return {
         orientation: currentOrientation(),
         envelopeSize: $("envelopeSize").value,
+        printMode: $("printMode").value,
+        customWidth: $("customWidth").value,
+        customHeight: $("customHeight").value,
         senderFontSize: $("senderFontSize").value,
         receiverFontSize: $("receiverFontSize").value,
         showBorder: $("showBorder").checked,
@@ -54,6 +57,9 @@ function loadState() {
         const orient = document.querySelector(`input[name="orientation"][value="${s.orientation}"]`);
         if (orient) orient.checked = true;
         if (s.envelopeSize) $("envelopeSize").value = s.envelopeSize;
+        if (s.printMode) $("printMode").value = s.printMode;
+        if (s.customWidth) $("customWidth").value = s.customWidth;
+        if (s.customHeight) $("customHeight").value = s.customHeight;
         if (s.senderFontSize) $("senderFontSize").value = s.senderFontSize;
         if (s.receiverFontSize) $("receiverFontSize").value = s.receiverFontSize;
         if (typeof s.showBorder === "boolean") $("showBorder").checked = s.showBorder;
@@ -247,20 +253,70 @@ $("downloadTemplate").addEventListener("click", (e) => {
 });
 
 /* ---------------- 設定 ---------------- */
+// 各信封尺寸實際寬高（mm），用於「每封一頁」時動態設定列印紙張尺寸
+const SIZE_DIMS = {
+    "western-dl": "220mm 110mm",
+    "western-12k": "230mm 120mm",
+    "chinese-2": "176mm 125mm",
+    "chinese-3": "230mm 160mm"
+};
+
 function currentOrientation() {
     return document.querySelector('input[name="orientation"]:checked').value;
 }
+
 function applyContainerClasses() {
     const size = $("envelopeSize").value;
     const orientation = currentOrientation();
+    const printMode = $("printMode").value;
+
     container.className = "";
-    container.classList.add("size-" + size, "orientation-" + orientation);
+    container.classList.add("size-" + size, "orientation-" + orientation, "print-" + printMode);
     if ($("showBorder").checked) container.classList.add("show-border");
     if ($("showStamp").checked) container.classList.add("show-stamp");
+
+    // 自訂尺寸：以 CSS 變數套用寬高
+    if (size === "custom") {
+        container.style.setProperty("--env-w", ($("customWidth").value || 220) + "mm");
+        container.style.setProperty("--env-h", ($("customHeight").value || 110) + "mm");
+    }
 }
 
-["envelopeSize", "showBorder", "showStamp", "senderFontSize", "receiverFontSize"].forEach((id) =>
-    $(id).addEventListener("change", render)
+// 依「列印方式」與信封尺寸動態設定 @page，讓「每封一頁」可直接對齊實體信封
+function updatePageStyle() {
+    let el = $("dynamicPageStyle");
+    if (!el) {
+        el = document.createElement("style");
+        el.id = "dynamicPageStyle";
+        document.head.appendChild(el);
+    }
+    const mode = $("printMode").value;
+    const size = $("envelopeSize").value;
+    let pageSize = "A4";
+    let margin = "8mm";
+
+    if (mode === "single") {
+        margin = "0";
+        if (size === "custom") {
+            pageSize = `${$("customWidth").value || 220}mm ${$("customHeight").value || 110}mm`;
+        } else if (SIZE_DIMS[size]) {
+            pageSize = SIZE_DIMS[size];
+        }
+    }
+    el.textContent = `@media print { @page { size: ${pageSize}; margin: ${margin}; } }`;
+}
+
+// 切換自訂尺寸欄位與列印方式說明
+function updateSettingsUI() {
+    $("customSizeRow").hidden = $("envelopeSize").value !== "custom";
+    $("printModeHint").textContent = $("printMode").value === "single"
+        ? "紙張會自動設成信封尺寸，請將實體信封放入印表機。"
+        : "信封會自動排在 A4 上，適合先印出再裝入信封或校稿。";
+}
+
+["envelopeSize", "showBorder", "showStamp", "senderFontSize", "receiverFontSize",
+    "printMode", "customWidth", "customHeight"].forEach((id) =>
+    $(id).addEventListener("input", () => { updateSettingsUI(); render(); })
 );
 document.querySelectorAll('input[name="orientation"]').forEach((el) =>
     el.addEventListener("change", render)
@@ -365,6 +421,7 @@ function render() {
     renderList();
 
     applyContainerClasses();
+    updatePageStyle();
     container.innerHTML = "";
     recipients.forEach((r) => container.appendChild(buildEnvelope(r)));
     scalePreview();
@@ -386,5 +443,6 @@ $("printBtn").addEventListener("click", () => {
 });
 
 /* ---------------- 初始 ---------------- */
-loadState(); // 還原上次在這台電腦的內容與設定
+loadState();        // 還原上次在這台電腦的內容與設定
+updateSettingsUI(); // 依還原的設定切換自訂尺寸欄位與說明
 render();
