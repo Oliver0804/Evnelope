@@ -239,6 +239,21 @@ input:focus, select:focus {
 .empty-state p { margin: 6px 0; }
 .empty-sub { font-size: 13px; }
 
+/* ---------- Footer ---------- */
+.app-footer {
+    max-width: 1280px;
+    margin: 8px auto 40px;
+    padding: 20px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--line);
+}
+.app-footer p { margin: 4px 0; }
+.app-footer a { color: var(--primary-dark); font-weight: 600; text-decoration: none; }
+.app-footer a:hover { text-decoration: underline; }
+@media print { .app-footer { display: none !important; } }
+
 /* ================= Envelopes ================= */
 #envelopesContainer { display: flex; flex-wrap: wrap; gap: 16px; }
 

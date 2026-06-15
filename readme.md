@@ -59,6 +59,6 @@
 | `styles.css` | 介面樣式與信封 / 列印排版 |
 | `script.js` | 表單、清單、CSV 解析與信封產生邏輯 |
 
-## 聯絡方式
+## 問題反饋
 
-如有任何問題，歡迎於 GitHub 開 Issue。
+有任何問題、建議或想要的功能，歡迎到 [GitHub Issues](https://github.com/Oliver0804/Evnelope/issues/new) 回報。網頁右上角與頁尾皆有「問題反饋」連結可直接前往。
