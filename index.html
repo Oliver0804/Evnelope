@@ -3,11 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台灣信封排版生成器</title>
+
+    <!-- 基本 SEO -->
+    <title>台灣信封排版生成器 | 免費線上製作可郵寄的中式 / 西式信封</title>
+    <meta name="description" content="免費線上信封排版工具，支援手動輸入或匯入 CSV，依中華郵政格式產生橫式 / 直式台灣信封，含郵遞區號、Logo、可拖曳排版與精準列印，資料僅存本機。">
+    <meta name="keywords" content="信封產生器,信封排版,台灣信封,中華郵政,直式信封,橫式信封,郵遞區號,列印信封,CSV 信封,寄信工具">
+    <meta name="author" content="Oliver0804">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="canonical" href="https://oliver0804.github.io/Evnelope/">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="zh_TW">
+    <meta property="og:site_name" content="台灣信封排版生成器">
+    <meta property="og:title" content="台灣信封排版生成器 | 免費線上製作可郵寄的信封">
+    <meta property="og:description" content="手動輸入或匯入 CSV，依中華郵政格式一鍵產出橫式 / 直式台灣信封，含郵遞區號、Logo、拖曳排版與精準列印。">
+    <meta property="og:url" content="https://oliver0804.github.io/Evnelope/">
+    <meta property="og:image" content="https://oliver0804.github.io/Evnelope/demo.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="台灣信封排版生成器 | 免費線上製作可郵寄的信封">
+    <meta name="twitter:description" content="依中華郵政格式一鍵產出橫式 / 直式台灣信封，含郵遞區號、Logo、拖曳排版與精準列印。">
+    <meta name="twitter:image" content="https://oliver0804.github.io/Evnelope/demo.png">
+
+    <!-- 結構化資料 (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "台灣信封排版生成器",
+        "url": "https://oliver0804.github.io/Evnelope/",
+        "description": "免費線上信封排版工具，依中華郵政格式產生可郵寄的橫式 / 直式台灣信封。",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any (Web)",
+        "inLanguage": "zh-Hant",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "TWD" },
+        "author": { "@type": "Person", "name": "Oliver0804", "url": "https://github.com/Oliver0804" }
+    }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+<button type="button" id="floatingPrint" class="floating-print" title="列印信封">🖨️ 列印信封</button>
 
 <header class="app-header">
     <div class="header-inner">
@@ -21,6 +63,7 @@
         <nav class="header-links">
             <a href="https://github.com/Oliver0804/Evnelope" target="_blank" rel="noopener">GitHub 專案</a>
             <a id="downloadTemplate" href="#">下載 CSV 模板</a>
+            <a href="https://github.com/Oliver0804/Evnelope/issues/new" target="_blank" rel="noopener">問題反饋</a>
         </nav>
     </div>
 </header>
@@ -197,7 +240,7 @@
     <section class="panel preview-pane" aria-label="預覽">
         <div class="preview-toolbar">
             <h2>信封清單 <span class="count-badge" id="countBadge">0</span></h2>
-            <p class="preview-help">下方為列印預覽，點擊清單項目可編輯或刪除。</p>
+            <p class="preview-help">提示：可直接在預覽上<strong>拖曳</strong>寄件人 / 收件人區塊調整位置，<strong>滑鼠滾輪</strong>可縮放區塊文字。</p>
         </div>
 
         <ul class="recipient-list" id="recipientList"></ul>
@@ -208,10 +251,33 @@
             <p class="empty-sub">使用左側「手動輸入」或「匯入 CSV」開始</p>
         </div>
 
+        <!-- 預覽縮放工具 -->
+        <div class="zoom-bar" id="zoomBar" hidden>
+            <span class="zoom-label">預覽縮放</span>
+            <button type="button" class="icon-btn" id="zoomOut">－</button>
+            <input type="range" id="zoomRange" min="30" max="200" step="5" value="100">
+            <span class="zoom-val" id="zoomVal">100%</span>
+            <button type="button" class="icon-btn" id="zoomIn">＋</button>
+            <button type="button" class="icon-btn" id="zoomFit">符合畫面</button>
+            <button type="button" class="icon-btn" id="resetLayout">重設排版</button>
+        </div>
+
         <!-- 列印與預覽容器 -->
-        <div id="envelopesContainer" class="size-western-dl orientation-horizontal show-border show-stamp"></div>
+        <div class="preview-scroll">
+            <div id="envelopesContainer" class="size-western-dl orientation-horizontal show-border show-stamp"></div>
+        </div>
     </section>
 </main>
+
+<footer class="app-footer">
+    <p>台灣信封排版生成器 — 純前端、資料僅存於你的瀏覽器。</p>
+    <p class="footer-links">
+        有問題或建議？歡迎到
+        <a href="https://github.com/Oliver0804/Evnelope/issues/new" target="_blank" rel="noopener">GitHub Issues 回報</a>，
+        或查看
+        <a href="https://github.com/Oliver0804/Evnelope" target="_blank" rel="noopener">原始碼</a>。
+    </p>
+</footer>
 
 <script src="script.js"></script>
 </body>

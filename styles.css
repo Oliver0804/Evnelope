@@ -50,6 +50,30 @@ body {
 }
 .header-links a:hover { border-color: #fff; }
 
+/* ---------- Floating print button ---------- */
+.floating-print {
+    position: fixed;
+    top: 16px; left: 16px;
+    z-index: 1000;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 24px;
+    padding: 12px 20px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, .45);
+    opacity: 0;
+    transform: translateY(-12px);
+    pointer-events: none;
+    transition: opacity .2s, transform .2s, background .15s;
+}
+.floating-print.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.floating-print:hover { background: var(--primary-dark); }
+.floating-print:active { transform: translateY(1px); }
+
 /* ---------- Layout ---------- */
 .layout {
     max-width: 1280px;
@@ -179,6 +203,19 @@ input:focus, select:focus {
 }
 .preview-help { color: var(--muted); font-size: 13px; margin: 6px 0 16px; }
 
+/* ---------- Zoom bar ---------- */
+.zoom-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 14px; box-shadow: var(--shadow);
+}
+.zoom-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.zoom-val { font-size: 13px; font-weight: 700; min-width: 44px; text-align: center; }
+#zoomRange { flex: 1; min-width: 120px; accent-color: var(--primary); }
+
+/* ---------- Preview scroll area ---------- */
+.preview-scroll { overflow: auto; max-width: 100%; }
+
 .recipient-list { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 10px; }
 .recipient-item {
     background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
@@ -201,6 +238,21 @@ input:focus, select:focus {
 .empty-icon { font-size: 44px; }
 .empty-state p { margin: 6px 0; }
 .empty-sub { font-size: 13px; }
+
+/* ---------- Footer ---------- */
+.app-footer {
+    max-width: 1280px;
+    margin: 8px auto 40px;
+    padding: 20px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--line);
+}
+.app-footer p { margin: 4px 0; }
+.app-footer a { color: var(--primary-dark); font-weight: 600; text-decoration: none; }
+.app-footer a:hover { text-decoration: underline; }
+@media print { .app-footer { display: none !important; } }
 
 /* ================= Envelopes ================= */
 #envelopesContainer { display: flex; flex-wrap: wrap; gap: 16px; }
@@ -227,6 +279,19 @@ input:focus, select:focus {
 
 /* scale down on screen so big envelopes fit the preview pane */
 #envelopesContainer { transform-origin: top left; }
+
+/* draggable blocks (editable in preview) */
+[data-drag] {
+    cursor: grab;
+    outline: 1px dashed transparent;
+    outline-offset: 3px;
+    border-radius: 2px;
+    transition: outline-color .12s, background .12s;
+    touch-action: none;
+}
+[data-drag]:hover { outline-color: var(--primary); background: rgba(37, 99, 235, .05); }
+[data-drag].dragging { cursor: grabbing; outline-color: var(--primary); background: rgba(37, 99, 235, .08); }
+@media print { [data-drag] { outline: none !important; background: none !important; } }
 
 /* stamp marker */
 .stamp {
@@ -293,9 +358,11 @@ input:focus, select:focus {
 /* ================= Print ================= */
 @media print {
     body { background: #fff; }
-    .app-header, .controls, .preview-toolbar, .recipient-list, .empty-state { display: none !important; }
+    .app-header, .controls, .preview-toolbar, .recipient-list, .empty-state,
+    .zoom-bar, .floating-print { display: none !important; }
     .layout { display: block; margin: 0; padding: 0; max-width: none; }
     .preview-pane { padding: 0; margin: 0; }
+    .preview-scroll { overflow: visible; }
 
     /* 列印時取消預覽縮放，恢復實際尺寸 */
     #envelopesContainer {
