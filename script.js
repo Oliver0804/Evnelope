@@ -13,6 +13,54 @@ const emptyState = $("emptyState");
 const countBadge = $("countBadge");
 const addBtn = $("addBtn");
 
+/* ---------------- 本機記憶（localStorage，僅存在這台電腦的瀏覽器） ---------------- */
+const STORAGE_KEY = "evnelope.data.v1";
+
+function gatherSettings() {
+    return {
+        orientation: currentOrientation(),
+        envelopeSize: $("envelopeSize").value,
+        senderFontSize: $("senderFontSize").value,
+        receiverFontSize: $("receiverFontSize").value,
+        showBorder: $("showBorder").checked,
+        showStamp: $("showStamp").checked
+    };
+}
+
+function saveState() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            recipients,
+            settings: gatherSettings()
+        }));
+    } catch (e) {
+        /* 隱私模式或空間不足時略過，不影響使用 */
+    }
+}
+
+function loadState() {
+    let data;
+    try {
+        data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    } catch (e) {
+        data = null;
+    }
+    if (!data) return;
+
+    if (Array.isArray(data.recipients)) recipients = data.recipients;
+
+    const s = data.settings;
+    if (s) {
+        const orient = document.querySelector(`input[name="orientation"][value="${s.orientation}"]`);
+        if (orient) orient.checked = true;
+        if (s.envelopeSize) $("envelopeSize").value = s.envelopeSize;
+        if (s.senderFontSize) $("senderFontSize").value = s.senderFontSize;
+        if (s.receiverFontSize) $("receiverFontSize").value = s.receiverFontSize;
+        if (typeof s.showBorder === "boolean") $("showBorder").checked = s.showBorder;
+        if (typeof s.showStamp === "boolean") $("showStamp").checked = s.showStamp;
+    }
+}
+
 /* ---------------- 工具 ---------------- */
 // 從地址開頭抽出 3~6 碼郵遞區號
 function extractZip(address) {
@@ -320,6 +368,8 @@ function render() {
     container.innerHTML = "";
     recipients.forEach((r) => container.appendChild(buildEnvelope(r)));
     scalePreview();
+
+    saveState(); // 每次變更後自動記憶到本機
 }
 
 /* ---------------- 列印 ---------------- */
@@ -336,4 +386,5 @@ $("printBtn").addEventListener("click", () => {
 });
 
 /* ---------------- 初始 ---------------- */
+loadState(); // 還原上次在這台電腦的內容與設定
 render();

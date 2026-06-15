@@ -128,6 +128,7 @@ input:focus, select:focus {
 .btn-block { display: block; width: 100%; margin-bottom: 10px; }
 .btn-block:last-child { margin-bottom: 0; }
 .action-card { position: sticky; top: 16px; }
+.privacy-hint { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); line-height: 1.5; }
 
 /* ---------- CSV import ---------- */
 .csv-import {
