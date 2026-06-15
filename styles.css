@@ -128,6 +128,7 @@ input:focus, select:focus {
 .btn-block { display: block; width: 100%; margin-bottom: 10px; }
 .btn-block:last-child { margin-bottom: 0; }
 .action-card { position: sticky; top: 16px; }
+.privacy-hint { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); line-height: 1.5; }
 
 /* ---------- CSV import ---------- */
 .csv-import {
@@ -147,6 +148,15 @@ input:focus, select:focus {
     display: block; background: #f6f8fc; border: 1px solid var(--line); border-radius: 6px;
     padding: 8px 10px; font-size: 11.5px; word-break: break-all; color: #334155;
 }
+
+/* ---------- Logo ---------- */
+.logo-actions { display: flex; gap: 10px; }
+.logo-preview {
+    margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: repeating-conic-gradient(#f6f8fc 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+    text-align: center;
+}
+.logo-preview img { max-width: 100%; max-height: 90px; object-fit: contain; }
 
 /* ---------- Segmented & checkbox ---------- */
 .segmented { display: flex; gap: 8px; }
@@ -213,6 +223,7 @@ input:focus, select:focus {
 .size-chinese-2   .envelope { width: 176mm; height: 125mm; }
 .size-chinese-3   .envelope { width: 230mm; height: 160mm; }
 .size-a4-quarter  .envelope { width: calc(297mm / 2 - 8px); height: calc(210mm / 2 - 8px); }
+.size-custom      .envelope { width: var(--env-w, 220mm); height: var(--env-h, 110mm); }
 
 /* scale down on screen so big envelopes fit the preview pane */
 #envelopesContainer { transform-origin: top left; }
@@ -241,6 +252,8 @@ input:focus, select:focus {
     position: absolute; left: 50%; top: 50%; transform: translate(-40%, -30%);
     max-width: 55%;
 }
+.sender-logo { display: block; width: auto; margin-bottom: 2mm; }
+.orientation-vertical .sender-logo { writing-mode: horizontal-tb; }
 .party-label {
     display: inline-block; font-size: .72em; font-weight: 700; color: #fff;
     background: #64748b; border-radius: 4px; padding: 1px 6px; margin-bottom: 4px;
@@ -279,30 +292,46 @@ input:focus, select:focus {
 
 /* ================= Print ================= */
 @media print {
-    @page { margin: 0; }
     body { background: #fff; }
     .app-header, .controls, .preview-toolbar, .recipient-list, .empty-state { display: none !important; }
     .layout { display: block; margin: 0; padding: 0; max-width: none; }
     .preview-pane { padding: 0; margin: 0; }
-    #envelopesContainer { display: block; gap: 0; transform: none !important; }
+
+    /* 列印時取消預覽縮放，恢復實際尺寸 */
+    #envelopesContainer {
+        display: block;
+        gap: 0;
+        transform: none !important;
+        height: auto !important;
+        width: auto !important;
+    }
 
     .envelope {
         box-shadow: none;
-        border: none !important;
-        margin: 0;
-        page-break-after: always;
-        break-after: page;
+        border: none;
         page-break-inside: avoid;
-    }
-    .envelope:last-child { page-break-after: auto; }
-
-    /* A4 draft mode prints 4 per page */
-    .size-a4-quarter .envelope {
-        page-break-after: auto;
-        display: inline-block;
-        vertical-align: top;
-        margin: 5mm;
-        border: 1px solid #999 !important;
+        break-inside: avoid;
     }
     .show-stamp .stamp { display: flex; }
+
+    /* 自動拼版：多封流式排列，能塞幾封就塞幾封，省紙 */
+    .print-pack .envelope {
+        display: inline-block;
+        vertical-align: top;
+        margin: 4mm;
+    }
+    .print-pack.show-border .envelope { border: 1px dashed #888; }
+
+    /* 每封一頁：直接印在實體信封上（@page 尺寸由 JS 依信封大小動態設定） */
+    .print-single .envelope {
+        display: block;
+        margin: 0 auto;
+        page-break-after: always;
+        break-after: page;
+    }
+    .print-single .envelope:last-child {
+        page-break-after: auto;
+        break-after: auto;
+    }
+    .print-single.show-border .envelope { border: 1px solid #999; }
 }

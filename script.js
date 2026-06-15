@@ -3,6 +3,7 @@
 /* ---------------- 狀態 ---------------- */
 let recipients = [];   // { senderZip, senderName, senderAddress, senderPhone, receiverZip, receiverName, receiverAddress, receiverPhone }
 let editingIndex = -1; // -1 表示新增模式，否則為正在編輯的索引
+let logoDataUrl = "";  // 使用者上傳的標誌（base64 data URL，僅存本機）
 
 /* ---------------- DOM ---------------- */
 const $ = (id) => document.getElementById(id);
@@ -12,6 +13,64 @@ const listEl = $("recipientList");
 const emptyState = $("emptyState");
 const countBadge = $("countBadge");
 const addBtn = $("addBtn");
+
+/* ---------------- 本機記憶（localStorage，僅存在這台電腦的瀏覽器） ---------------- */
+const STORAGE_KEY = "evnelope.data.v1";
+
+function gatherSettings() {
+    return {
+        orientation: currentOrientation(),
+        envelopeSize: $("envelopeSize").value,
+        printMode: $("printMode").value,
+        customWidth: $("customWidth").value,
+        customHeight: $("customHeight").value,
+        senderFontSize: $("senderFontSize").value,
+        receiverFontSize: $("receiverFontSize").value,
+        showBorder: $("showBorder").checked,
+        showStamp: $("showStamp").checked,
+        logo: logoDataUrl,
+        logoSize: $("logoSize").value
+    };
+}
+
+function saveState() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            recipients,
+            settings: gatherSettings()
+        }));
+    } catch (e) {
+        /* 隱私模式或空間不足時略過，不影響使用 */
+    }
+}
+
+function loadState() {
+    let data;
+    try {
+        data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    } catch (e) {
+        data = null;
+    }
+    if (!data) return;
+
+    if (Array.isArray(data.recipients)) recipients = data.recipients;
+
+    const s = data.settings;
+    if (s) {
+        const orient = document.querySelector(`input[name="orientation"][value="${s.orientation}"]`);
+        if (orient) orient.checked = true;
+        if (s.envelopeSize) $("envelopeSize").value = s.envelopeSize;
+        if (s.printMode) $("printMode").value = s.printMode;
+        if (s.customWidth) $("customWidth").value = s.customWidth;
+        if (s.customHeight) $("customHeight").value = s.customHeight;
+        if (s.senderFontSize) $("senderFontSize").value = s.senderFontSize;
+        if (s.receiverFontSize) $("receiverFontSize").value = s.receiverFontSize;
+        if (typeof s.showBorder === "boolean") $("showBorder").checked = s.showBorder;
+        if (typeof s.showStamp === "boolean") $("showStamp").checked = s.showStamp;
+        if (s.logo) logoDataUrl = s.logo;
+        if (s.logoSize) $("logoSize").value = s.logoSize;
+    }
+}
 
 /* ---------------- 工具 ---------------- */
 // 從地址開頭抽出 3~6 碼郵遞區號
@@ -199,20 +258,99 @@ $("downloadTemplate").addEventListener("click", (e) => {
 });
 
 /* ---------------- 設定 ---------------- */
+// 各信封尺寸實際寬高（mm），用於「每封一頁」時動態設定列印紙張尺寸
+const SIZE_DIMS = {
+    "western-dl": "220mm 110mm",
+    "western-12k": "230mm 120mm",
+    "chinese-2": "176mm 125mm",
+    "chinese-3": "230mm 160mm"
+};
+
 function currentOrientation() {
     return document.querySelector('input[name="orientation"]:checked').value;
 }
+
 function applyContainerClasses() {
     const size = $("envelopeSize").value;
     const orientation = currentOrientation();
+    const printMode = $("printMode").value;
+
     container.className = "";
-    container.classList.add("size-" + size, "orientation-" + orientation);
+    container.classList.add("size-" + size, "orientation-" + orientation, "print-" + printMode);
     if ($("showBorder").checked) container.classList.add("show-border");
     if ($("showStamp").checked) container.classList.add("show-stamp");
+
+    // 自訂尺寸：以 CSS 變數套用寬高
+    if (size === "custom") {
+        container.style.setProperty("--env-w", ($("customWidth").value || 220) + "mm");
+        container.style.setProperty("--env-h", ($("customHeight").value || 110) + "mm");
+    }
 }
 
-["envelopeSize", "showBorder", "showStamp", "senderFontSize", "receiverFontSize"].forEach((id) =>
-    $(id).addEventListener("change", render)
+// 依「列印方式」與信封尺寸動態設定 @page，讓「每封一頁」可直接對齊實體信封
+function updatePageStyle() {
+    let el = $("dynamicPageStyle");
+    if (!el) {
+        el = document.createElement("style");
+        el.id = "dynamicPageStyle";
+        document.head.appendChild(el);
+    }
+    const mode = $("printMode").value;
+    const size = $("envelopeSize").value;
+    let pageSize = "A4";
+    let margin = "8mm";
+
+    if (mode === "single") {
+        margin = "0";
+        if (size === "custom") {
+            pageSize = `${$("customWidth").value || 220}mm ${$("customHeight").value || 110}mm`;
+        } else if (SIZE_DIMS[size]) {
+            pageSize = SIZE_DIMS[size];
+        }
+    }
+    el.textContent = `@media print { @page { size: ${pageSize}; margin: ${margin}; } }`;
+}
+
+/* ---------------- 標誌 Logo ---------------- */
+function updateLogoUI() {
+    const has = !!logoDataUrl;
+    $("logoPreview").hidden = !has;
+    $("logoSizeRow").hidden = !has;
+    $("logoRemoveBtn").hidden = !has;
+    if (has) $("logoPreviewImg").src = logoDataUrl;
+}
+
+$("logoPickBtn").addEventListener("click", () => $("logoFile").click());
+$("logoFile").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        logoDataUrl = ev.target.result;
+        updateLogoUI();
+        render();
+    };
+    reader.readAsDataURL(file);
+});
+$("logoRemoveBtn").addEventListener("click", () => {
+    logoDataUrl = "";
+    updateLogoUI();
+    render();
+});
+$("logoSize").addEventListener("input", render);
+
+// 切換自訂尺寸欄位與列印方式說明
+function updateSettingsUI() {
+    $("customSizeRow").hidden = $("envelopeSize").value !== "custom";
+    $("printModeHint").textContent = $("printMode").value === "single"
+        ? "紙張會自動設成信封尺寸，請將實體信封放入印表機。"
+        : "信封會自動排在 A4 上，適合先印出再裝入信封或校稿。";
+}
+
+["envelopeSize", "showBorder", "showStamp", "senderFontSize", "receiverFontSize",
+    "printMode", "customWidth", "customHeight"].forEach((id) =>
+    $(id).addEventListener("input", () => { updateSettingsUI(); render(); })
 );
 document.querySelectorAll('input[name="orientation"]').forEach((el) =>
     el.addEventListener("change", render)
@@ -243,6 +381,10 @@ function buildEnvelope(r) {
     env.className = "envelope";
 
     const stamp = `<div class="stamp">郵票<br>黏貼處</div>`;
+    const logoH = $("logoSize").value || 12;
+    const logoHtml = logoDataUrl
+        ? `<img class="sender-logo" src="${logoDataUrl}" style="height:${logoH}mm" alt="logo">`
+        : "";
 
     if (orientation === "vertical") {
         // 直式：收件人郵遞區號獨立置於右上，寄件人郵遞區號置於左下
@@ -256,6 +398,7 @@ function buildEnvelope(r) {
                 ${r.receiverPhone ? `<div class="line">${esc(r.receiverPhone)}</div>` : ""}
             </div>
             <div class="sender" style="font-size:${senderFs}px">
+                ${logoHtml}
                 <span class="party-label">寄件人</span>
                 <div class="line name-line">${esc(r.senderName)} 寄</div>
                 <div class="line addr-line">${esc(r.senderAddress)}</div>
@@ -269,6 +412,7 @@ function buildEnvelope(r) {
         env.innerHTML = `
             ${stamp}
             <div class="sender" style="font-size:${senderFs}px">
+                ${logoHtml}
                 <span class="party-label">寄件人</span>
                 ${r.senderZip ? `<div class="line zip-line">${esc(r.senderZip)}</div>` : ""}
                 <div class="line name-line">${senderName}</div>
@@ -317,9 +461,12 @@ function render() {
     renderList();
 
     applyContainerClasses();
+    updatePageStyle();
     container.innerHTML = "";
     recipients.forEach((r) => container.appendChild(buildEnvelope(r)));
     scalePreview();
+
+    saveState(); // 每次變更後自動記憶到本機
 }
 
 /* ---------------- 列印 ---------------- */
@@ -336,4 +483,7 @@ $("printBtn").addEventListener("click", () => {
 });
 
 /* ---------------- 初始 ---------------- */
+loadState();        // 還原上次在這台電腦的內容與設定
+updateSettingsUI(); // 依還原的設定切換自訂尺寸欄位與說明
+updateLogoUI();     // 還原標誌預覽
 render();
