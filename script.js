@@ -544,7 +544,6 @@ function buildEnvelope(r) {
     } else {
         // 橫式：寄件人左上、收件人中央
         const senderName = [esc(r.senderName), esc(r.senderPhone)].filter(Boolean).join("　");
-        const receiverName = [esc(r.receiverName) + " 收", esc(r.receiverPhone)].filter(Boolean).join("　");
         env.innerHTML = `
             ${stamp}
             <div class="sender" data-drag="sender" style="font-size:${senderFs}px">
@@ -557,7 +556,8 @@ function buildEnvelope(r) {
             <div class="receiver" data-drag="receiver" style="font-size:${receiverFs}px">
                 <span class="party-label">收件人</span>
                 ${r.receiverZip ? `<div class="line zip-line">${esc(r.receiverZip)}</div>` : ""}
-                <div class="line name-line">${receiverName}</div>
+                <div class="line name-line">${esc(r.receiverName)} 收</div>
+                ${r.receiverPhone ? `<div class="line">${esc(r.receiverPhone)}</div>` : ""}
                 <div class="line addr-line">${esc(r.receiverAddress)}</div>
             </div>`;
     }
