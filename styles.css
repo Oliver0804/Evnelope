@@ -221,6 +221,8 @@ input:focus, select:focus {
     background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
     padding: 12px 14px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow);
 }
+.recipient-item .ri-check { display: flex; align-items: center; }
+.recipient-item .ri-check input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary); }
 .recipient-item .ri-main { flex: 1; min-width: 0; }
 .recipient-item .ri-to { font-weight: 700; font-size: 14px; }
 .recipient-item .ri-zip { color: var(--primary-dark); font-weight: 700; margin-right: 6px; }

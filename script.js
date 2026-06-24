@@ -7,6 +7,7 @@ let logoDataUrl = "";  // 使用者上傳的標誌（base64 data URL，僅存本
 let layout = { horizontal: {}, vertical: {} }; // 各方向、各區塊的自訂位置（px，相對信封左上角）
 let userZoom = 1;      // 使用者的預覽縮放倍率（1 = 符合畫面）
 let currentScale = 1;  // 目前實際套用的預覽縮放（自動符合 × userZoom），拖曳換算用
+const selectedIdx = new Set(); // 清單中被勾選、要單獨列印的索引
 
 /* ---------------- DOM ---------------- */
 const $ = (id) => document.getElementById(id);
@@ -173,12 +174,14 @@ function editRecipient(i) {
 function deleteRecipient(i) {
     recipients.splice(i, 1);
     if (editingIndex === i) resetForm();
+    selectedIdx.clear(); // 索引位移，清除勾選避免錯亂
     render();
 }
 
 $("clearAllBtn").addEventListener("click", () => {
     if (recipients.length && confirm("確定要清除全部信封嗎？")) {
         recipients = [];
+        selectedIdx.clear();
         resetForm();
         render();
     }
@@ -587,6 +590,9 @@ function renderList() {
         const li = document.createElement("li");
         li.className = "recipient-item";
         li.innerHTML = `
+            <label class="ri-check" title="勾選以單獨列印">
+                <input type="checkbox" data-sel="${i}" ${selectedIdx.has(i) ? "checked" : ""}>
+            </label>
             <div class="ri-main">
                 <div class="ri-to">
                     ${r.receiverZip ? `<span class="ri-zip">${esc(r.receiverZip)}</span>` : ""}${esc(r.receiverName) || "（未填收件人）"}
@@ -595,47 +601,83 @@ function renderList() {
                 <div class="ri-from">寄件人：${esc(r.senderName) || "—"}</div>
             </div>
             <div class="ri-actions">
+                <button class="icon-btn" data-print="${i}" title="只列印這一封">列印</button>
                 <button class="icon-btn" data-edit="${i}">編輯</button>
                 <button class="icon-btn danger" data-del="${i}">刪除</button>
             </div>`;
         listEl.appendChild(li);
     });
+    listEl.querySelectorAll("[data-sel]").forEach((c) =>
+        c.addEventListener("change", () => {
+            const i = +c.dataset.sel;
+            if (c.checked) selectedIdx.add(i); else selectedIdx.delete(i);
+            updatePrintLabel();
+        })
+    );
+    listEl.querySelectorAll("[data-print]").forEach((b) =>
+        b.addEventListener("click", () => doPrint([+b.dataset.print]))
+    );
     listEl.querySelectorAll("[data-edit]").forEach((b) =>
         b.addEventListener("click", () => editRecipient(+b.dataset.edit))
     );
     listEl.querySelectorAll("[data-del]").forEach((b) =>
         b.addEventListener("click", () => deleteRecipient(+b.dataset.del))
     );
+    updatePrintLabel();
+}
+
+// 依目前勾選數更新列印按鈕文字
+function updatePrintLabel() {
+    const n = selectedIdx.size;
+    const txt = n > 0 ? `🖨️ 列印選取 (${n})` : "🖨️ 列印信封";
+    $("printBtn").textContent = txt;
+    $("floatingPrint").textContent = txt;
+}
+
+// 在容器中繪製指定的信封清單
+function renderEnvelopes(list) {
+    applyContainerClasses();
+    updatePageStyle();
+    container.innerHTML = "";
+    list.forEach((r) => container.appendChild(buildEnvelope(r)));
+    scalePreview();
 }
 
 function render() {
     countBadge.textContent = recipients.length;
     emptyState.style.display = recipients.length ? "none" : "block";
     renderList();
-
-    applyContainerClasses();
-    updatePageStyle();
-    container.innerHTML = "";
-    recipients.forEach((r) => container.appendChild(buildEnvelope(r)));
-    scalePreview();
-
+    renderEnvelopes(recipients);
     saveState(); // 每次變更後自動記憶到本機
 }
 
-/* ---------------- 列印 ---------------- */
-function doPrint() {
+/* ---------------- 列印 ----------------
+   indices 有值 → 只印這些；否則有勾選 → 只印勾選；都沒有 → 印全部 */
+function doPrint(indices) {
     if (!recipients.length) {
         alert("請先新增至少一個信封。");
         return;
     }
+    let idxList;
+    if (Array.isArray(indices) && indices.length) {
+        idxList = indices;
+    } else if (selectedIdx.size) {
+        idxList = [...selectedIdx].sort((a, b) => a - b);
+    } else {
+        idxList = recipients.map((_, i) => i);
+    }
+    const list = idxList.map((i) => recipients[i]).filter(Boolean);
+    if (!list.length) return;
+
+    // 暫時只繪製要列印的信封，列印後再還原完整預覽
+    renderEnvelopes(list);
     container.style.transform = "scale(1)";
     container.style.width = "auto";
     container.style.height = "auto";
     window.print();
-    // 列印對話框關閉後恢復預覽縮放
-    setTimeout(scalePreview, 300);
+    setTimeout(() => renderEnvelopes(recipients), 300);
 }
-$("printBtn").addEventListener("click", doPrint);
+$("printBtn").addEventListener("click", () => doPrint());
 
 /* ---------------- 初始 ---------------- */
 $("loadSample").addEventListener("click", loadSample);
