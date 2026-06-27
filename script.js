@@ -8,6 +8,7 @@ let layout = { horizontal: {}, vertical: {} }; // 各方向、各區塊的自訂
 let userZoom = 1;      // 使用者的預覽縮放倍率（1 = 符合畫面）
 let currentScale = 1;  // 目前實際套用的預覽縮放（自動符合 × userZoom），拖曳換算用
 const selectedIdx = new Set(); // 清單中被勾選、要單獨列印的索引
+let defaultSender = { senderZip: "", senderName: "", senderAddress: "", senderPhone: "" }; // 預設寄件人
 
 /* ---------------- DOM ---------------- */
 const $ = (id) => document.getElementById(id);
@@ -35,7 +36,9 @@ function gatherSettings() {
         logo: logoDataUrl,
         logoSize: $("logoSize").value,
         layout,
-        userZoom
+        userZoom,
+        defaultSender,
+        autoSenderFill: $("autoSenderFill").checked
     };
 }
 
@@ -77,6 +80,8 @@ function loadState() {
         if (s.logoSize) $("logoSize").value = s.logoSize;
         if (s.layout && s.layout.horizontal && s.layout.vertical) layout = s.layout;
         if (typeof s.userZoom === "number") userZoom = s.userZoom;
+        if (s.defaultSender) defaultSender = s.defaultSender;
+        if (typeof s.autoSenderFill === "boolean") $("autoSenderFill").checked = s.autoSenderFill;
     }
     return true;
 }
@@ -142,6 +147,17 @@ function resetForm() {
     form.reset();
     editingIndex = -1;
     addBtn.textContent = "＋ 新增到清單";
+    prefillSender(); // 帶入預設寄件人，方便連續輸入
+}
+
+// 若開啟自動帶入且寄件人欄位為空，填入預設寄件人
+function prefillSender() {
+    if (!$("autoSenderFill").checked) return;
+    if ($("senderName").value || $("senderAddress").value) return;
+    $("senderZip").value = defaultSender.senderZip || "";
+    $("senderName").value = defaultSender.senderName || "";
+    $("senderAddress").value = defaultSender.senderAddress || "";
+    $("senderPhone").value = defaultSender.senderPhone || "";
 }
 
 form.addEventListener("submit", (e) => {
@@ -164,7 +180,57 @@ form.addEventListener("submit", (e) => {
 
 $("resetFormBtn").addEventListener("click", resetForm);
 
+/* ---------------- 預設寄件人 ---------------- */
+function readDefaultSenderInputs() {
+    const addrRaw = $("defSenderAddress").value.trim();
+    defaultSender = {
+        senderZip: $("defSenderZip").value.trim() || extractZip(addrRaw),
+        senderName: $("defSenderName").value.trim(),
+        senderAddress: stripLeadingZip(addrRaw),
+        senderPhone: $("defSenderPhone").value.trim()
+    };
+}
+function fillDefaultSenderInputs() {
+    $("defSenderZip").value = defaultSender.senderZip || "";
+    $("defSenderName").value = defaultSender.senderName || "";
+    $("defSenderAddress").value = defaultSender.senderAddress || "";
+    $("defSenderPhone").value = defaultSender.senderPhone || "";
+}
+["defSenderZip", "defSenderName", "defSenderAddress", "defSenderPhone"].forEach((id) =>
+    $(id).addEventListener("input", () => {
+        readDefaultSenderInputs();
+        saveState();
+        // 非編輯狀態且開啟自動帶入時，即時把預設值反映到表單寄件人
+        if (editingIndex < 0 && $("autoSenderFill").checked) {
+            $("senderZip").value = defaultSender.senderZip || "";
+            $("senderName").value = defaultSender.senderName || "";
+            $("senderAddress").value = defaultSender.senderAddress || "";
+            $("senderPhone").value = defaultSender.senderPhone || "";
+        }
+    })
+);
+$("autoSenderFill").addEventListener("change", () => {
+    saveState();
+    if (editingIndex < 0) prefillSender();
+});
+$("applySenderAll").addEventListener("click", () => {
+    readDefaultSenderInputs();
+    if (!defaultSender.senderName && !defaultSender.senderAddress) {
+        alert("請先填寫預設寄件人。");
+        return;
+    }
+    if (!recipients.length) { alert("目前沒有信封。"); return; }
+    if (!confirm(`將「${defaultSender.senderName || defaultSender.senderAddress}」套用為全部 ${recipients.length} 封的寄件人？`)) return;
+    recipients = recipients.map((r) => Object.assign({}, r, defaultSender));
+    render();
+});
+
 /* ---------------- 清單操作 ---------------- */
+function duplicateRecipient(i) {
+    recipients.splice(i + 1, 0, Object.assign({}, recipients[i]));
+    selectedIdx.clear();
+    render();
+}
 function editRecipient(i) {
     editingIndex = i;
     fillForm(recipients[i]);
@@ -281,6 +347,62 @@ $("downloadTemplate").addEventListener("click", (e) => {
     a.download = "envelope_template.csv";
     a.click();
     URL.revokeObjectURL(a.href);
+});
+
+/* ---------------- 匯出 CSV ---------------- */
+function csvCell(v) {
+    const s = String(v == null ? "" : v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+$("exportCsvBtn").addEventListener("click", () => {
+    if (!recipients.length) { alert("目前沒有可匯出的信封。"); return; }
+    const header = ["寄件人郵遞區號", "寄件人姓名", "寄件人地址", "寄件人電話",
+        "收件人郵遞區號", "收件人姓名", "收件人地址", "收件人電話"];
+    const lines = [header.join(",")];
+    recipients.forEach((r) => {
+        lines.push([r.senderZip, r.senderName, r.senderAddress, r.senderPhone,
+            r.receiverZip, r.receiverName, r.receiverAddress, r.receiverPhone].map(csvCell).join(","));
+    });
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "envelopes.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+});
+
+/* ---------------- 批次貼上 ---------------- */
+$("pasteBtn").addEventListener("click", () => {
+    const p = $("pastePanel");
+    p.hidden = !p.hidden;
+    if (!p.hidden) $("pasteArea").focus();
+});
+$("pasteCancelBtn").addEventListener("click", () => { $("pastePanel").hidden = true; });
+$("pasteAddBtn").addEventListener("click", () => {
+    readDefaultSenderInputs();
+    const lines = $("pasteArea").value.split("\n").map((l) => l.trim()).filter(Boolean);
+    const added = lines.map((line) => {
+        const c = line.split(",").map((x) => x.trim());
+        let zip = "", name = "", addr = "", phone = "";
+        if (c.length >= 4) { [zip, name, addr, phone] = c; }
+        else if (c.length === 3) {
+            if (/^\d{3,6}$/.test(c[0])) { [zip, name, addr] = c; }
+            else { [name, addr, phone] = c; }
+        } else if (c.length === 2) { [name, addr] = c; }
+        else { name = c[0]; }
+        return Object.assign({}, defaultSender, {
+            receiverZip: zip || extractZip(addr),
+            receiverName: name,
+            receiverAddress: stripLeadingZip(addr),
+            receiverPhone: phone
+        });
+    }).filter((r) => r.receiverName || r.receiverAddress);
+
+    if (!added.length) { alert("沒有解析到資料，請確認格式。"); return; }
+    recipients = recipients.concat(added);
+    $("pasteArea").value = "";
+    $("pastePanel").hidden = true;
+    render();
 });
 
 /* ---------------- 設定 ---------------- */
@@ -602,6 +724,7 @@ function renderList() {
             </div>
             <div class="ri-actions">
                 <button class="icon-btn" data-print="${i}" title="只列印這一封">列印</button>
+                <button class="icon-btn" data-dup="${i}" title="複製一筆">複製</button>
                 <button class="icon-btn" data-edit="${i}">編輯</button>
                 <button class="icon-btn danger" data-del="${i}">刪除</button>
             </div>`;
@@ -617,6 +740,9 @@ function renderList() {
     listEl.querySelectorAll("[data-print]").forEach((b) =>
         b.addEventListener("click", () => doPrint([+b.dataset.print]))
     );
+    listEl.querySelectorAll("[data-dup]").forEach((b) =>
+        b.addEventListener("click", () => duplicateRecipient(+b.dataset.dup))
+    );
     listEl.querySelectorAll("[data-edit]").forEach((b) =>
         b.addEventListener("click", () => editRecipient(+b.dataset.edit))
     );
@@ -626,13 +752,33 @@ function renderList() {
     updatePrintLabel();
 }
 
-// 依目前勾選數更新列印按鈕文字
+// 依目前勾選數更新列印按鈕文字與清單工具列
 function updatePrintLabel() {
     const n = selectedIdx.size;
     const txt = n > 0 ? `🖨️ 列印選取 (${n})` : "🖨️ 列印信封";
     $("printBtn").textContent = txt;
     $("floatingPrint").textContent = txt;
+
+    $("listToolbar").hidden = recipients.length === 0;
+    $("selInfo").textContent = n > 0 ? `已選取 ${n} / ${recipients.length}` : `共 ${recipients.length} 封`;
+    const all = $("selectAll");
+    all.checked = recipients.length > 0 && n === recipients.length;
+    all.indeterminate = n > 0 && n < recipients.length;
 }
+
+/* 清單快捷：全選 / 反選 */
+$("selectAll").addEventListener("change", (e) => {
+    selectedIdx.clear();
+    if (e.target.checked) recipients.forEach((_, i) => selectedIdx.add(i));
+    renderList();
+});
+$("invertSel").addEventListener("click", () => {
+    const next = new Set();
+    recipients.forEach((_, i) => { if (!selectedIdx.has(i)) next.add(i); });
+    selectedIdx.clear();
+    next.forEach((i) => selectedIdx.add(i));
+    renderList();
+});
 
 // 在容器中繪製指定的信封清單
 function renderEnvelopes(list) {
@@ -686,6 +832,8 @@ const hadSaved = loadState(); // 還原上次在這台電腦的內容與設定
 if (!hadSaved && recipients.length === 0) {
     recipients = SAMPLE_RECIPIENTS.map((r) => Object.assign({}, r)); // 首次造訪載入範例
 }
-updateSettingsUI(); // 依還原的設定切換自訂尺寸欄位與說明
-updateLogoUI();     // 還原標誌預覽
+updateSettingsUI();      // 依還原的設定切換自訂尺寸欄位與說明
+updateLogoUI();          // 還原標誌預覽
+fillDefaultSenderInputs(); // 還原預設寄件人欄位
+prefillSender();         // 表單帶入預設寄件人
 render();

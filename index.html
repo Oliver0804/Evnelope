@@ -72,6 +72,35 @@
     <!-- 左側：輸入與設定 -->
     <section class="panel controls" aria-label="輸入與設定">
 
+        <!-- 預設寄件人 -->
+        <div class="card">
+            <h2 class="card-title">預設寄件人</h2>
+            <p class="hint" style="margin-top:0">設定一次，新增收件人時自動帶入，省去每筆重打。</p>
+            <div class="field">
+                <label for="defSenderZip">郵遞區號</label>
+                <input type="text" id="defSenderZip" inputmode="numeric" maxlength="6" placeholder="例：100">
+            </div>
+            <div class="field">
+                <label for="defSenderName">姓名</label>
+                <input type="text" id="defSenderName" placeholder="王小明">
+            </div>
+            <div class="field">
+                <label for="defSenderAddress">地址</label>
+                <input type="text" id="defSenderAddress" placeholder="台北市中正區忠孝東路一段100號">
+            </div>
+            <div class="field">
+                <label for="defSenderPhone">電話</label>
+                <input type="text" id="defSenderPhone" inputmode="tel" placeholder="0912345678">
+            </div>
+            <label class="checkbox">
+                <input type="checkbox" id="autoSenderFill" checked>
+                <span>新增收件人時自動帶入寄件人</span>
+            </label>
+            <div class="form-actions" style="margin-top:12px">
+                <button type="button" class="btn btn-outline" id="applySenderAll">套用到現有所有信封</button>
+            </div>
+        </div>
+
         <!-- 手動輸入表單 -->
         <div class="card">
             <h2 class="card-title">手動輸入</h2>
@@ -132,6 +161,19 @@
                 <input type="file" id="csvFile" accept=".csv" hidden />
                 <button type="button" class="btn btn-outline" id="csvPickBtn">選擇 CSV 檔案</button>
                 <span class="csv-hint">或將檔案拖曳到這裡</span>
+            </div>
+            <div class="form-actions" style="margin-top:12px">
+                <button type="button" class="btn btn-ghost" id="pasteBtn">📋 批次貼上地址</button>
+                <button type="button" class="btn btn-ghost" id="exportCsvBtn">⬇️ 匯出 CSV</button>
+            </div>
+            <div class="paste-panel" id="pastePanel" hidden>
+                <p class="hint" style="margin-top:0">每行一筆收件人，欄位以逗號分隔（寄件人用上方的「預設寄件人」）：<br><code>郵遞區號,姓名,地址,電話</code></p>
+                <textarea id="pasteArea" rows="5" placeholder="407,李大華,台中市西屯區台灣大道二段200號,0987654321
+220,林志強,新北市板橋區文化路一段400號,0977555666"></textarea>
+                <div class="form-actions" style="margin-top:10px">
+                    <button type="button" class="btn btn-primary" id="pasteAddBtn">加入清單</button>
+                    <button type="button" class="btn btn-ghost" id="pasteCancelBtn">取消</button>
+                </div>
             </div>
             <details class="csv-format">
                 <summary>CSV 欄位格式</summary>
@@ -243,6 +285,12 @@
             <p class="preview-help">提示：勾選清單項目可<strong>只列印選取的信封</strong>，或用每筆的「列印」鈕單獨列印；在預覽上可<strong>拖曳</strong>區塊調整位置、<strong>滑鼠滾輪</strong>縮放文字。</p>
         </div>
 
+        <div class="list-toolbar" id="listToolbar" hidden>
+            <label class="checkbox"><input type="checkbox" id="selectAll"><span>全選</span></label>
+            <button type="button" class="icon-btn" id="invertSel">反選</button>
+            <span class="list-toolbar-sep"></span>
+            <span class="sel-info" id="selInfo"></span>
+        </div>
         <ul class="recipient-list" id="recipientList"></ul>
 
         <div id="emptyState" class="empty-state">

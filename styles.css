@@ -168,6 +168,12 @@ input:focus, select:focus {
 .csv-format { margin-top: 12px; font-size: 13px; }
 .csv-format summary { cursor: pointer; font-weight: 600; color: var(--primary-dark); }
 .csv-format p { color: var(--muted); margin: 8px 0; }
+.paste-panel { margin-top: 12px; }
+.paste-panel textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+    font-size: 13px; font-family: inherit; resize: vertical; line-height: 1.5;
+}
+.paste-panel textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 .csv-format code {
     display: block; background: #f6f8fc; border: 1px solid var(--line); border-radius: 6px;
     padding: 8px 10px; font-size: 11.5px; word-break: break-all; color: #334155;
@@ -215,6 +221,15 @@ input:focus, select:focus {
 
 /* ---------- Preview scroll area ---------- */
 .preview-scroll { overflow: auto; max-width: 100%; }
+
+.list-toolbar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 8px 12px; margin-bottom: 10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+}
+.list-toolbar .checkbox { margin-top: 0; }
+.list-toolbar-sep { flex: 1; }
+.sel-info { font-size: 13px; color: var(--muted); }
 
 .recipient-list { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 10px; }
 .recipient-item {
