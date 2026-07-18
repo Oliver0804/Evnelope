@@ -33,6 +33,9 @@ function gatherSettings() {
         receiverFontSize: $("receiverFontSize").value,
         showBorder: $("showBorder").checked,
         showStamp: $("showStamp").checked,
+        zipBoxes: $("zipBoxes").checked,
+        offsetX: $("offsetX").value,
+        offsetY: $("offsetY").value,
         logo: logoDataUrl,
         logoSize: $("logoSize").value,
         layout,
@@ -76,6 +79,9 @@ function loadState() {
         if (s.receiverFontSize) $("receiverFontSize").value = s.receiverFontSize;
         if (typeof s.showBorder === "boolean") $("showBorder").checked = s.showBorder;
         if (typeof s.showStamp === "boolean") $("showStamp").checked = s.showStamp;
+        if (typeof s.zipBoxes === "boolean") $("zipBoxes").checked = s.zipBoxes;
+        if (s.offsetX !== undefined) $("offsetX").value = s.offsetX;
+        if (s.offsetY !== undefined) $("offsetY").value = s.offsetY;
         if (s.logo) logoDataUrl = s.logo;
         if (s.logoSize) $("logoSize").value = s.logoSize;
         if (s.layout && s.layout.horizontal && s.layout.vertical) layout = s.layout;
@@ -456,7 +462,13 @@ function updatePageStyle() {
             pageSize = SIZE_DIMS[size];
         }
     }
-    el.textContent = `@media print { @page { size: ${pageSize}; margin: ${margin}; } }`;
+    // 列印位移校正：整體平移信封內容，補償各印表機的進紙偏差（僅列印時生效）
+    const ox = parseFloat($("offsetX").value) || 0;
+    const oy = parseFloat($("offsetY").value) || 0;
+    const shift = (ox || oy)
+        ? ` #envelopesContainer .envelope { transform: translate(${ox}mm, ${oy}mm); }`
+        : "";
+    el.textContent = `@media print { @page { size: ${pageSize}; margin: ${margin}; }${shift} }`;
 }
 
 /* ---------------- 標誌 Logo ---------------- */
@@ -496,8 +508,8 @@ function updateSettingsUI() {
         : "信封會自動排在 A4 上，適合先印出再裝入信封或校稿。";
 }
 
-["envelopeSize", "showBorder", "showStamp", "senderFontSize", "receiverFontSize",
-    "printMode", "customWidth", "customHeight"].forEach((id) =>
+["envelopeSize", "showBorder", "showStamp", "zipBoxes", "senderFontSize", "receiverFontSize",
+    "printMode", "customWidth", "customHeight", "offsetX", "offsetY"].forEach((id) =>
     $(id).addEventListener("input", () => { updateSettingsUI(); render(); })
 );
 document.querySelectorAll('input[name="orientation"]').forEach((el) =>
@@ -633,6 +645,14 @@ window.addEventListener("scroll", () => {
 });
 
 /* ---------------- 渲染 ---------------- */
+// 郵遞區號：一般文字或紅框格（標準信封樣式）
+function zipHtml(zip, small) {
+    if (!$("zipBoxes").checked) return esc(zip);
+    const boxes = String(zip).replace(/\D/g, "").split("")
+        .map((d) => `<span class="zip-box">${d}</span>`).join("");
+    return boxes ? `<span class="zip-boxes${small ? " small" : ""}">${boxes}</span>` : esc(zip);
+}
+
 function buildEnvelope(r) {
     const senderFs = $("senderFontSize").value || 14;
     const receiverFs = $("receiverFontSize").value || 22;
@@ -651,7 +671,7 @@ function buildEnvelope(r) {
         // 直式：收件人郵遞區號獨立置於右上，寄件人郵遞區號置於左下
         env.innerHTML = `
             ${stamp}
-            ${r.receiverZip ? `<div class="receiver-zip" data-drag="receiverZip" style="font-size:${receiverFs}px">${esc(r.receiverZip)}</div>` : ""}
+            ${r.receiverZip ? `<div class="receiver-zip" data-drag="receiverZip" style="font-size:${receiverFs}px">${zipHtml(r.receiverZip)}</div>` : ""}
             <div class="receiver" data-drag="receiver" style="font-size:${receiverFs}px">
                 <span class="party-label">收件人</span>
                 <div class="line name-line">${esc(r.receiverName)} 收</div>
@@ -665,7 +685,7 @@ function buildEnvelope(r) {
                 <div class="line addr-line">${esc(r.senderAddress)}</div>
                 ${r.senderPhone ? `<div class="line">${esc(r.senderPhone)}</div>` : ""}
             </div>
-            ${r.senderZip ? `<div class="sender-zip" data-drag="senderZip">${esc(r.senderZip)}</div>` : ""}`;
+            ${r.senderZip ? `<div class="sender-zip" data-drag="senderZip">${zipHtml(r.senderZip, true)}</div>` : ""}`;
     } else {
         // 橫式：寄件人左上、收件人中央
         const senderName = [esc(r.senderName), esc(r.senderPhone)].filter(Boolean).join("　");
@@ -675,13 +695,13 @@ function buildEnvelope(r) {
             <div class="sender" data-drag="sender" style="font-size:${senderFs}px">
                 ${logoHtml}
                 <span class="party-label">寄件人</span>
-                ${r.senderZip ? `<div class="line zip-line">${esc(r.senderZip)}</div>` : ""}
+                ${r.senderZip ? `<div class="line zip-line">${zipHtml(r.senderZip, true)}</div>` : ""}
                 <div class="line name-line">${senderName}</div>
                 <div class="line addr-line">${esc(r.senderAddress)}</div>
             </div>
             <div class="receiver" data-drag="receiver" style="font-size:${receiverFs}px">
                 <span class="party-label">收件人</span>
-                ${r.receiverZip ? `<div class="line zip-line">${esc(r.receiverZip)}</div>` : ""}
+                ${r.receiverZip ? `<div class="line zip-line">${zipHtml(r.receiverZip)}</div>` : ""}
                 <div class="line name-line">${receiverName}</div>
                 <div class="line addr-line">${esc(r.receiverAddress)}</div>
             </div>`;

@@ -269,6 +269,22 @@
                 <input type="checkbox" id="showStamp" checked>
                 <span>顯示郵票位置標記</span>
             </label>
+            <label class="checkbox">
+                <input type="checkbox" id="zipBoxes">
+                <span>郵遞區號紅框格（標準信封樣式）</span>
+            </label>
+
+            <div class="two-col" style="margin-top:12px">
+                <div class="field">
+                    <label for="offsetX">列印位移 X (mm)</label>
+                    <input type="number" id="offsetX" value="0" step="0.5" min="-30" max="30">
+                </div>
+                <div class="field">
+                    <label for="offsetY">列印位移 Y (mm)</label>
+                    <input type="number" id="offsetY" value="0" step="0.5" min="-30" max="30">
+                </div>
+            </div>
+            <p class="hint">印出來位置偏了就調這裡：X 正值往右、Y 正值往下。只影響列印，不影響畫面預覽。</p>
         </div>
 
         <div class="card action-card">

@@ -344,6 +344,17 @@ input:focus, select:focus {
 .receiver .party-label { background: var(--primary); }
 .line { margin: 1px 0; }
 .zip-line { font-weight: 700; letter-spacing: 2px; }
+
+/* 郵遞區號紅框格（標準信封樣式） */
+.zip-boxes { display: inline-flex; gap: 1.2mm; letter-spacing: 0; }
+.zip-box {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.05em; height: 1.45em;
+    border: 1.5px solid #d5342b; border-radius: 1px;
+    font-weight: 700; line-height: 1; color: #1a1a1a;
+}
+.zip-boxes.small .zip-box { border-width: 1px; }
+.orientation-vertical .zip-boxes { writing-mode: horizontal-tb; }
 .name-line { font-weight: 700; }
 
 /* ---- Vertical (直式) layout ---- */
